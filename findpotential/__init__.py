@@ -113,12 +113,12 @@ class find_potential:
         av_dens = (0.25/(1+red_z)**3)*crit #average density of universe
 
         #filter particles to within 'Mpcbin' range
-        GAL_R_3Mpc = GAL_R[Mpcbin]
-        GAL_V_3Mpc = GAL_V[Mpcbin]
+        self.GAL_R_3Mpc = GAL_R[Mpcbin]
+        self.GAL_V_3Mpc = GAL_V[Mpcbin]
 
-        radial = gal_data[:,3][Mpcbin]*(gal_data[:,0][Mpcbin]/GAL_R_3Mpc) + gal_data[:,4][Mpcbin]*(gal_data[:,1][Mpcbin]/GAL_R_3Mpc) + gal_data[:,5][Mpcbin]*(gal_data[:,2][Mpcbin]/GAL_R_3Mpc) #radial velocity in km/s
+        self.radial = gal_data[:,3][Mpcbin]*(gal_data[:,0][Mpcbin]/self.GAL_R_3Mpc) + gal_data[:,4][Mpcbin]*(gal_data[:,1][Mpcbin]/self.GAL_R_3Mpc) + gal_data[:,5][Mpcbin]*(gal_data[:,2][Mpcbin]/self.GAL_R_3Mpc) #radial velocity in km/s
 
-        number_of_particles_in_bin,bin_edges = np.histogram(GAL_R_3Mpc,np.arange(0,rmax,bin_size)) #bin particles by radial distance
+        number_of_particles_in_bin,bin_edges = np.histogram(self.GAL_R_3Mpc,np.arange(0,rmax,bin_size)) #bin particles by radial distance
 
         self.rbin = (bin_edges[1:]+bin_edges[:-1])/2.0 #the grid of r-values associated with each radial bin
 
@@ -172,7 +172,7 @@ class find_potential:
         H2 = (h*100*3.24e-20)**2
         re = (G*self.cumulative_mass_profile[1:-1]/(-q*H2))**(1/3.0)
         #re = (G*M200[i]*1e10/(-q*H2))**(1/3.0)
-        v_esc_hflow = np.sqrt(self.v_esc_numerical**2 + (q*(h*100)**2*(self.rbin[1:-1]**2)))# - 3*re**2))) #km/s
+        self.v_esc_hflow = np.sqrt(self.v_esc_numerical**2 + (q*(h*100)**2*(self.rbin[1:-1]**2)))# - 3*re**2))) #km/s
 
         #Chris's GM/R +  dm calc
         base = -G*self.cumulative_mass_profile[self.rbin<=Rvir][-1]/Rvir
@@ -185,32 +185,6 @@ class find_potential:
         dm = dm[1:-1]
         self.potential_chris_tot = (base + dm)*(3.086e19)**2 + (q*(h*100)**2*(self.rbin[1:-1]**2)) #km^2/s^2
         self.v_esc_chris_tot = np.sqrt(-2*self.potential_chris_tot) #km/s
-
-        '''plots'''
-        s,ax = plt.subplots(1,figsize=(17,10))
-        # plot up particles
-        ax.plot(GAL_R_3Mpc,radial,'ko',markersize=1,alpha=0.3)
-        
-        ax.plot(self.rbin,self.v_esc_NFW,'b')# NFW escape velocity
-        ax.plot(self.rbin,-self.v_esc_NFW,'b')
-
-        ax.plot(self.rbin[1:-1],self.v_esc_NFW_numerical,'b--')# numerical NFW escape velocity
-        ax.plot(self.rbin[1:-1],-self.v_esc_NFW_numerical,'b--')
-        
-        ax.plot(self.rbin[1:-1],v_esc_hflow,color='g')# numerical escape velocity
-        ax.plot(self.rbin[1:-1],-v_esc_hflow,color='g')
-        
-        ax.plot(self.rbin,self.v_esc_chris,color='orange')# Chris escape velocity
-        ax.plot(self.rbin,-self.v_esc_chris,color='orange')
-        
-        #format plot
-        ax.axvline(Rvir,color='k',ls='--',alpha=0.5)
-        ax.set_xlabel('r [Mpc]')
-        ax.set_ylabel('$ \sqrt{-2\phi_{N}}$ [km/s]',fontsize=13)
-        ax.set_xlim(0,3)#Rvir)
-        #plt.savefig('path_to_figs/'+str(i)+'phase.png')
-        #plt.show()
-        plt.close()
 
 if __name__ == '__main__':
     #####Read in catalog data#####
@@ -229,4 +203,31 @@ if __name__ == '__main__':
         gal_vy = data.field('VVY')
         gal_vz = data.field('VVZ')
         gal_ob = find_potential(np.column_stack((gal_x,gal_y,gal_z,gal_vx,gal_vy,gal_vz)),np.array([0.0,0.0,0.0,halovx[ID==IDh],halovy[ID==IDh],halovz[ID==IDh]]),redshift[ID==IDh][0],Rvir)
+
+        s,ax = plt.subplots(1,figsize=(17,10))
+        # plot up particles
+        ax.plot(gal_ob.GAL_R_3Mpc,gal_ob.radial,'ko',markersize=1,alpha=0.3)
+        
+        ax.plot(gal_ob.rbin,gal_ob.v_esc_NFW,'b')# NFW escape velocity
+        ax.plot(gal_ob.rbin,-gal_ob.v_esc_NFW,'b')
+
+        ax.plot(gal_ob.rbin[1:-1],gal_ob.v_esc_NFW_numerical,'b--')# numerical NFW escape velocity
+        ax.plot(gal_ob.rbin[1:-1],-gal_ob.v_esc_NFW_numerical,'b--')
+        
+        ax.plot(gal_ob.rbin[1:-1],gal_ob.v_esc_hflow,color='g')# numerical escape velocity
+        ax.plot(gal_ob.rbin[1:-1],-gal_ob.v_esc_hflow,color='g')
+        
+        ax.plot(gal_ob.rbin,gal_ob.v_esc_chris,color='orange')# Chris escape velocity
+        ax.plot(gal_ob.rbin,-gal_ob.v_esc_chris,color='orange')
+        
+        #format plot
+        ax.axvline(Rvir,color='k',ls='--',alpha=0.5)
+        ax.set_xlabel('r [Mpc]')
+        ax.set_ylabel('$ \sqrt{-2\phi_{N}}$ [km/s]',fontsize=13)
+        ax.set_xlim(0,3)#Rvir)
+        #plt.savefig('path_to_figs/'+str(i)+'phase.png')
+        #plt.show()
+        plt.close()
+
         print 'DONE WITH CLUSTER {0}'.format(i)
+        
