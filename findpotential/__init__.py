@@ -21,6 +21,10 @@ NUMERICAL AND NFW MASS/DENSITY/POTENTIAL/V_ESC CALCULATIONS
     outputs, however the program creates two plots that can be saved. The first is 
     the cumulative/NFW mass profiles and the second is the phase space plot with the 
     various escape velocity solutions overplotted.
+
+Author: Dan Gifford
+Year: 2014
+Institution: University of Michigan
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 from __future__ import division
