@@ -120,86 +120,88 @@ class find_potential:
 
         number_of_particles_in_bin,bin_edges = np.histogram(GAL_R_3Mpc,np.arange(0,rmax,bin_size)) #bin particles by radial distance
 
-        GAL_R_edge = (bin_edges[1:]+bin_edges[:-1])/2.0 #the grid of r-values associated with each radial bin
+        self.rbin = (bin_edges[1:]+bin_edges[:-1])/2.0 #the grid of r-values associated with each radial bin
 
         #### calculate cumulative mass profile (M<r):
         particle_mass = 8.6e8/h #Millennium particle mass
 
-        cumulative_mass_profile = particle_mass * np.cumsum(number_of_particles_in_bin)# solar masses
+        self.cumulative_mass_profile = particle_mass * np.cumsum(number_of_particles_in_bin)# solar masses
 
         '''plot cumulative mass profile M(<r)'''
-        plt.plot(GAL_R_edge, cumulative_mass_profile)
+        plt.plot(self.rbin, self.cumulative_mass_profile)
 
         ############ NFW fit #############
         #parameter guesses:
-        rho_0_guess = 5e14 # Msol / Mpc3
-        r_0_guess = 0.4 #Mpc
+        self.rho_0_guess = 5e14 # Msol / Mpc3
+        self.r_0_guess = 0.4 #Mpc
 
-        NFW_array,pcov = fit_NFW(GAL_R_edge,cumulative_mass_profile,Rvir,[rho_0_guess,r_0_guess])
+        NFW_array,pcov = fit_NFW(self.rbin,self.cumulative_mass_profile,Rvir,[self.rho_0_guess,self.r_0_guess])
 
         #first element of optimization curve fit output array. units: Msol/[Mpc]^3
-        rho_0 = NFW_array[0]  #* u.Msol * u.Mpc**-3
+        self.rho_0 = NFW_array[0]  #* u.Msol * u.Mpc**-3
 
         #second element of optimization curve fit output array. units: [Mpc]
-        r_0 = NFW_array[1] #* u.Mpc
+        self.r_0 = NFW_array[1] #* u.Mpc
 
-        print 'normalization: {0:.3e} Msol/Mpc^3    scale radius: {1:.3f}'.format(rho_0,r_0)
+        print 'normalization: {0:.3e} Msol/Mpc^3    scale radius: {1:.3f} Mpc'.format(self.rho_0,self.r_0)
+
+        self.NFW_mass_profile = NFW_cumulative_mass(self.rbin,self.rho_0,self.r_0)
 
         '''plot cumulative mass profile M(<r) FIT'''
-        plt.plot(GAL_R_edge, NFW_cumulative_mass(GAL_R_edge,rho_0,r_0))
+        plt.plot(self.rbin, self.NFW_mass_profile)
         #plt.savefig('path_to_figs/'+str(i)+'profile.png')
         plt.close()
         #plt.show()
 
         #Now numerically solve for density and potential profiles
-        dens_NFW = density(GAL_R_edge,NFW_cumulative_mass(GAL_R_edge,rho_0,r_0)) - av_dens #Msol/Mpc^3
-        dens = density(GAL_R_edge,cumulative_mass_profile) - av_dens #Msol/Mpc^3
-        potential_numerical = numerical_potential(GAL_R_edge,dens) #Mpc^2/s^2
-        potential_NFW_numerical = numerical_potential(GAL_R_edge,dens_NFW) #Mpc^2/s^2
+        self.dens_NFW = density(self.rbin,self.NFW_mass_profile) - av_dens #Msol/Mpc^3
+        self.dens = density(self.rbin,self.cumulative_mass_profile) - av_dens #Msol/Mpc^3
+        self.potential_numerical = numerical_potential(self.rbin,self.dens) #Mpc^2/s^2
+        self.potential_NFW_numerical = numerical_potential(self.rbin,self.dens_NFW) #Mpc^2/s^2
 
 
         ############# Escape Velocity profiles  #############
 
         #escape velocity profile
-        v_esc_NFW = np.sqrt(-2 * phi_N(GAL_R_edge,rho_0,r_0))*3.086e19 #km/s
-        v_esc_NFW_numerical = np.sqrt(-2 * potential_NFW_numerical)*3.086e19 #km/s
-        v_esc_numerical = np.sqrt(-2 * potential_numerical)*3.086e19 #km/s
+        self.v_esc_NFW = np.sqrt(-2 * phi_N(self.rbin,self.rho_0,self.r_0))*3.086e19 #km/s
+        self.v_esc_NFW_numerical = np.sqrt(-2 * self.potential_NFW_numerical)*3.086e19 #km/s
+        self.v_esc_numerical = np.sqrt(-2 * self.potential_numerical)*3.086e19 #km/s
         
         #hubble param escape calculation
         q = 0.25/2.0 - 0.75
         H2 = (h*100*3.24e-20)**2
-        re = (G*cumulative_mass_profile[1:-1]/(-q*H2))**(1/3.0)
+        re = (G*self.cumulative_mass_profile[1:-1]/(-q*H2))**(1/3.0)
         #re = (G*M200[i]*1e10/(-q*H2))**(1/3.0)
-        v_esc_hflow = np.sqrt(v_esc_numerical**2 + (q*(h*100)**2*(GAL_R_edge[1:-1]**2)))# - 3*re**2))) #km/s
+        v_esc_hflow = np.sqrt(self.v_esc_numerical**2 + (q*(h*100)**2*(self.rbin[1:-1]**2)))# - 3*re**2))) #km/s
 
         #Chris's GM/R +  dm calc
-        base = -G*cumulative_mass_profile[GAL_R_edge<=Rvir][-1]/Rvir
-        dm = -G*np.append(cumulative_mass_profile[0],cumulative_mass_profile[1:] - cumulative_mass_profile[:-1])/GAL_R_edge
-        potential_chris = (base + dm)*(3.086e19)**2 + (q*(h*100)**2*(GAL_R_edge**2)) #km^2/s^2
-        v_esc_chris = np.sqrt(-2*potential_chris) #km/s
+        base = -G*self.cumulative_mass_profile[self.rbin<=Rvir][-1]/Rvir
+        dm = -G*np.append(self.cumulative_mass_profile[0],self.cumulative_mass_profile[1:] - self.cumulative_mass_profile[:-1])/self.rbin
+        self.potential_chris = (base + dm)*(3.086e19)**2 + (q*(h*100)**2*(self.rbin**2)) #km^2/s^2
+        self.v_esc_chris = np.sqrt(-2*self.potential_chris) #km/s
 
         #Chris's integral + dm calc
-        base = potential_numerical
+        base = self.potential_numerical
         dm = dm[1:-1]
-        potential_chris_tot = (base + dm)*(3.086e19)**2 + (q*(h*100)**2*(GAL_R_edge[1:-1]**2)) #km^2/s^2
-        v_esc_chris_tot = np.sqrt(-2*potential_chris_tot) #km/s
+        self.potential_chris_tot = (base + dm)*(3.086e19)**2 + (q*(h*100)**2*(self.rbin[1:-1]**2)) #km^2/s^2
+        self.v_esc_chris_tot = np.sqrt(-2*self.potential_chris_tot) #km/s
 
         '''plots'''
         s,ax = plt.subplots(1,figsize=(17,10))
         # plot up particles
         ax.plot(GAL_R_3Mpc,radial,'ko',markersize=1,alpha=0.3)
         
-        ax.plot(GAL_R_edge,v_esc_NFW,'b')# NFW escape velocity
-        ax.plot(GAL_R_edge,-v_esc_NFW,'b')
+        ax.plot(self.rbin,self.v_esc_NFW,'b')# NFW escape velocity
+        ax.plot(self.rbin,-self.v_esc_NFW,'b')
 
-        ax.plot(GAL_R_edge[1:-1],v_esc_NFW_numerical,'b--')# numerical NFW escape velocity
-        ax.plot(GAL_R_edge[1:-1],-v_esc_NFW_numerical,'b--')
+        ax.plot(self.rbin[1:-1],self.v_esc_NFW_numerical,'b--')# numerical NFW escape velocity
+        ax.plot(self.rbin[1:-1],-self.v_esc_NFW_numerical,'b--')
         
-        ax.plot(GAL_R_edge[1:-1],v_esc_hflow,color='g')# numerical escape velocity
-        ax.plot(GAL_R_edge[1:-1],-v_esc_hflow,color='g')
+        ax.plot(self.rbin[1:-1],v_esc_hflow,color='g')# numerical escape velocity
+        ax.plot(self.rbin[1:-1],-v_esc_hflow,color='g')
         
-        ax.plot(GAL_R_edge,v_esc_chris,color='orange')# Chris escape velocity
-        ax.plot(GAL_R_edge,-v_esc_chris,color='orange')
+        ax.plot(self.rbin,self.v_esc_chris,color='orange')# Chris escape velocity
+        ax.plot(self.rbin,-self.v_esc_chris,color='orange')
         
         #format plot
         ax.axvline(Rvir,color='k',ls='--',alpha=0.5)
